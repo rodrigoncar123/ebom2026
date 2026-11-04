@@ -19,8 +19,8 @@ window.EBOM_CONFIG = {
     referencia: "Efésios 2:8",
     referenciaUrl: "https://www.bible.com/pt/bible/212/EPH.2.8.ARC",
     dias: [
-      { data: "2026-11-27", diaSemana: "Sexta-feira", hora: "19:00", pastor: "Pr. Arnaldo", foto: "assets/pr-arnaldo.jpg" },
-      { data: "2026-11-28", diaSemana: "Sábado",      hora: "19:00", pastor: "Pr. Adauto",  foto: "assets/pr-adauto.jpg" }
+      { data: "2026-11-27", diaSemana: "Sexta-feira", hora: "19:00", pastor: "Pr. Arnaldo", foto: "assets/pr-adauto.jpg" },
+      { data: "2026-11-28", diaSemana: "Sábado",      hora: "19:00", pastor: "Pr. Adauto",  foto: "assets/pr-arnaldo.jpg" }
     ]
   }
 };
