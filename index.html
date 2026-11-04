@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#12306b">
+<title>EBOM 2026 — Inscrição</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="hero">
+  <div class="igreja" id="hIgreja"></div>
+  <h1>EBOM</h1>
+  <p class="sub">Escola Bíblica de Obreiros e Membros</p>
+  <blockquote class="verse" style="margin-bottom:0">
+    “<span id="hTema"></span>”
+    <a id="hRef" target="_blank" rel="noopener"></a>
+  </blockquote>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Programação</h2>
+    <p class="lead">Participe das duas noites de estudo.</p>
+    <div class="dias" id="dias"></div>
+  </section>
+
+  <section class="card" id="formCard">
+    <h2>Faça sua inscrição</h2>
+    <p class="lead">Preencha os dados abaixo. É rápido e gratuito.</p>
+    <div class="alerta demo hidden" id="demoAviso">Modo demonstração: as inscrições ficam salvas só neste aparelho. Configure a API (README) para o cadastro oficial.</div>
+
+    <form id="form" novalidate autocomplete="off">
+      <label for="cpf">CPF</label>
+      <input id="cpf" inputmode="numeric" placeholder="000.000.000-00" maxlength="14" autocomplete="off">
+      <div class="dica" id="dCpf"></div>
+
+      <label for="nome">Nome completo</label>
+      <input id="nome" placeholder="Seu nome completo" autocomplete="name">
+      <div class="dica" id="dNome"></div>
+
+      <label for="nasc">Data de nascimento</label>
+      <input id="nasc" type="date" min="1900-01-01" autocomplete="bday">
+      <div class="dica" id="dNasc"></div>
+
+      <label for="cidade">Cidade</label>
+      <input id="cidade" list="cidades" placeholder="Sua cidade" autocomplete="address-level2">
+      <datalist id="cidades">
+        <option>Valparaíso</option><option>Guararapes</option><option>Araçatuba</option>
+        <option>Andradina</option><option>Birigui</option><option>Penápolis</option><option>Bilac</option>
+      </datalist>
+      <div class="dica" id="dCidade"></div>
+
+      <label class="consent"><input type="checkbox" id="lgpd">
+        <span>Autorizo o uso dos meus dados somente para a organização do evento (LGPD).</span></label>
+      <div class="dica" id="dLgpd"></div>
+
+      <div class="alerta erro hidden" id="erroGeral"></div>
+      <button class="btn" id="btnEnviar" type="submit">Inscrever-me</button>
+    </form>
+  </section>
+
+  <section class="card resultado hidden" id="resCard">
+    <div class="selo" id="resSelo">✓</div>
+    <h2 id="resTitulo"></h2>
+    <p class="lead" id="resTexto"></p>
+    <div class="resumo" id="resResumo"></div>
+    <button class="btn ouro" id="btnAbrir" type="button">📄 Abrir comprovante (PDF)</button>
+    <button class="btn claro" id="btnBaixar" type="button">⬇ Baixar comprovante</button>
+    <button class="btn claro" id="btnNova" type="button">Nova inscrição</button>
+  </section>
+</main>
+
+<footer>
+  <span id="fRodape"></span><br>
+  <a href="admin.html">Área da organização</a>
+</footer>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const X = window.EBOM, E = X.E;
+
+  /* ---- conteúdo do evento ---- */
+  $('hIgreja').textContent = E.igreja + ' · ' + E.ministerio;
+  $('hTema').textContent = E.tema;
+  $('hRef').textContent = E.referencia + ' (ARC)'; $('hRef').href = E.referenciaUrl;
+  $('fRodape').textContent = E.igreja;
+  $('dias').innerHTML = E.dias.map(d=>`
+    <div class="dia">
+      <img src="${d.foto}" alt="${d.pastor}">
+      <div class="pastor">${d.pastor}</div>
+      <div class="data">${X.fmtData(d.data).slice(0,5)}</div>
+      <div class="sem">${d.diaSemana}</div>
+      <span class="hora">${d.hora.replace(':','h')}</span>
+    </div>`).join('');
+  if (X.Api.demo) $('demoAviso').classList.remove('hidden');
+
+  /* ---- máscara e verificação do CPF ---- */
+  const cpf = $('cpf');
+  cpf.addEventListener('input', ()=>{ cpf.value = X.fmtCpf(cpf.value); dica('dCpf',''); cpf.classList.remove('invalido'); });
+  cpf.addEventListener('blur', async ()=>{
+    if (X.onlyDigits(cpf.value).length !== 11) return;
+    if (!X.validaCpf(cpf.value)) return dica('dCpf','CPF inválido. Confira os números.','erro', cpf);
+    try {
+      const r = await X.Api.call({acao:'existe', cpf: X.onlyDigits(cpf.value)});
+      if (r.ok && r.existe) dica('dCpf','Este CPF já está inscrito. Informe a data de nascimento para abrir seu comprovante.','aviso');
+    } catch(e){}
+  });
+
+  function dica(id, msg, tipo, campo){
+    const el = $(id); el.textContent = msg; el.className = 'dica' + (tipo ? ' '+tipo : '');
+    if (campo) campo.classList.toggle('invalido', tipo==='erro');
+  }
+
+  /* ---- envio ---- */
+  let docAtual = null;
+  $('form').addEventListener('submit', async (ev)=>{
+    ev.preventDefault();
+    $('erroGeral').classList.add('hidden');
+    let ok = true;
+    const v = { cpf:X.onlyDigits(cpf.value), nome:X.limpa($('nome').value), nascimento:$('nasc').value, cidade:X.limpa($('cidade').value) };
+    ['dCpf','dNome','dNasc','dCidade','dLgpd'].forEach(i=>dica(i,''));
+    if (!X.validaCpf(v.cpf))            { dica('dCpf','Informe um CPF válido.','erro',cpf); ok=false; }
+    if (!X.validaNome(v.nome))          { dica('dNome','Informe nome e sobrenome (somente letras).','erro',$('nome')); ok=false; }
+    if (!X.validaNascimento(v.nascimento)) { dica('dNasc','Informe uma data de nascimento válida.','erro',$('nasc')); ok=false; }
+    if (!X.validaCidade(v.cidade))      { dica('dCidade','Informe sua cidade.','erro',$('cidade')); ok=false; }
+    if (!$('lgpd').checked)             { dica('dLgpd','Marque a autorização para continuar.','erro'); ok=false; }
+    if (!ok) return;
+
+    const btn = $('btnEnviar'); btn.disabled = true; btn.textContent = 'Enviando…';
+    try {
+      const r = await X.Api.call({acao:'inscrever', ...v, consentimento:true});
+      if (!r.ok) {
+        const g = $('erroGeral'); g.textContent = r.erro || 'Não foi possível concluir a inscrição.'; g.classList.remove('hidden');
+        if (r.codigo === 'CPF_EXISTE') dica('dNasc','Confira a data de nascimento usada na inscrição.','erro',$('nasc'));
+        return;
+      }
+      await mostrarResultado(r.registro, r.jaCadastrado);
+    } catch(e){
+      const g = $('erroGeral'); g.textContent = 'Sem conexão com o servidor. Verifique a internet e tente novamente.'; g.classList.remove('hidden');
+    } finally { btn.disabled = false; btn.textContent = 'Inscrever-me'; }
+  });
+
+  async function mostrarResultado(reg, ja){
+    $('formCard').classList.add('hidden'); $('resCard').classList.remove('hidden');
+    $('resSelo').textContent = ja ? '!' : '✓'; $('resSelo').classList.toggle('aviso', !!ja);
+    $('resTitulo').textContent = ja ? 'Você já está inscrito(a)!' : 'Inscrição confirmada!';
+    $('resTexto').textContent = ja ? 'Encontramos seu cadastro. Abra seu comprovante abaixo.' : 'Que a graça do Senhor te acompanhe. Guarde seu comprovante.';
+    $('resResumo').innerHTML = `
+      <div><span>Protocolo</span><b>${reg.protocolo}</b></div>
+      <div><span>Nome</span><b>${esc(reg.nome)}</b></div>
+      <div><span>CPF</span><b>${X.maskCpf(reg.cpf)}</b></div>
+      <div><span>Cidade</span><b>${esc(reg.cidade)}</b></div>`;
+    window.scrollTo({top:0,behavior:'smooth'});
+    $('btnAbrir').disabled = $('btnBaixar').disabled = true;
+    try {
+      docAtual = await X.gerarComprovante(reg);
+      $('btnAbrir').disabled = $('btnBaixar').disabled = false;
+      // no computador abre automaticamente; no celular o toque no botão evita bloqueio do navegador
+      if (window.matchMedia('(pointer:fine)').matches) abrir();
+    } catch(e){ const g=$('resTexto'); g.textContent='Inscrição registrada, mas não foi possível gerar o PDF agora. Tente novamente com internet.'; }
+    $('btnBaixar').dataset.nome = `Comprovante-EBOM-${reg.protocolo}.pdf`;
+  }
+  function abrir(){ if(!docAtual) return; const w = window.open(docAtual.output('bloburl'),'_blank'); if(!w) baixar(); }
+  function baixar(){ if(docAtual) docAtual.save($('btnBaixar').dataset.nome || 'Comprovante-EBOM.pdf'); }
+  $('btnAbrir').onclick = abrir; $('btnBaixar').onclick = baixar;
+  $('btnNova').onclick = ()=>{ $('form').reset(); ['dCpf','dNome','dNasc','dCidade','dLgpd'].forEach(i=>dica(i,'')); $('resCard').classList.add('hidden'); $('formCard').classList.remove('hidden'); docAtual=null; window.scrollTo({top:0}); };
+  const esc = (s)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+})();
+</script>
+</body>
+</html>
