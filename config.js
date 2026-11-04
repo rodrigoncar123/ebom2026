@@ -6,7 +6,7 @@
    (dados salvos só no próprio aparelho — apenas para testes).
    ===================================================================== */
 window.EBOM_CONFIG = {
-  API_URL: "",
+  API_URL: "https://script.google.com/macros/s/AKfycbzu33sLgVIWuR36b7NGlnmUOiXOFdjGxwm5IVLHUkybfcyU3eMjegqL-zNw6f1sJf5x/exec",
 
   EVENTO: {
     sigla: "EBOM",
