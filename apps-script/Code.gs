@@ -50,7 +50,7 @@ function rota_(req) {
 }
 
 function inscrever_(req, cpf) {
-  const nome = String(req.nome || '').replace(/\s+/g, ' ').trim();
+  const nome = titulo_(String(req.nome || '').replace(/\s+/g, ' ').trim());
   const cidade = String(req.cidade || '').replace(/\s+/g, ' ').trim();
   const nasc = String(req.nascimento || '');
   if (!cpfValido_(cpf)) return { ok: false, erro: 'CPF inválido.' };
@@ -120,4 +120,12 @@ function cpfValido_(c) {
     if (((s * 10) % 11) % 10 !== Number(c[t])) return false;
   }
   return true;
+}
+
+function titulo_(s) {
+  const peq = ['da', 'de', 'do', 'das', 'dos', 'e'];
+  return s.toLocaleLowerCase('pt-BR').split(' ').map(function (p, i) {
+    if (i > 0 && peq.indexOf(p) >= 0) return p;
+    return p.replace(/^(.)/u, function (c) { return c.toLocaleUpperCase('pt-BR'); }).replace(/([-'’.])(\p{L})/gu, function (_, a, b) { return a + b.toLocaleUpperCase('pt-BR'); });
+  }).join(' ');
 }
