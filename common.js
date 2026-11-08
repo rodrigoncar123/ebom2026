@@ -234,7 +234,13 @@
   }
   function resumoCidades(regs) {
     const m = {};
-    regs.forEach((r) => { const c = limpa(r.cidade) || "—"; m[c] = (m[c] || 0) + 1; });
+    const chave = (x) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/(?:\s*[-\/,]\s*|\s+)\(?sp\)?$/i, "").trim();
+    const nomes = {};
+    regs.forEach((r) => {
+      const c0 = limpa(r.cidade) || "—", k = chave(c0);
+      if (!nomes[k]) nomes[k] = c0.replace(/(?:\s*[-\/,]\s*|\s+)\(?sp\)?$/i, "").trim() || c0;
+      const c = nomes[k]; m[c] = (m[c] || 0) + 1;
+    });
     return Object.entries(m).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "pt-BR"));
   }
 

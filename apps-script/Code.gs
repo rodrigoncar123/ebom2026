@@ -51,7 +51,7 @@ function rota_(req) {
 
 function inscrever_(req, cpf) {
   const nome = titulo_(String(req.nome || '').replace(/\s+/g, ' ').trim());
-  const cidade = String(req.cidade || '').replace(/\s+/g, ' ').trim();
+  const cidade = cidade_(String(req.cidade || '').replace(/\s+/g, ' ').trim());
   const nasc = String(req.nascimento || '');
   if (!cpfValido_(cpf)) return { ok: false, erro: 'CPF inválido.' };
   if (nome.length < 5 || nome.indexOf(' ') < 0 || !TEXTO_RE.test(nome)) return { ok: false, erro: 'Nome inválido.' };
@@ -128,4 +128,18 @@ function titulo_(s) {
     if (i > 0 && peq.indexOf(p) >= 0) return p;
     return p.replace(/^(.)/u, function (c) { return c.toLocaleUpperCase('pt-BR'); }).replace(/([-'’.])(\p{L})/gu, function (_, a, b) { return a + b.toLocaleUpperCase('pt-BR'); });
   }).join(' ');
+}
+
+const CIDADES = ['Valparaíso', 'Guararapes', 'Araçatuba', 'Andradina', 'Birigui', 'Penápolis', 'Bilac', 'Lavínia', 'Barbosa', 'Bento de Abreu', 'Mirandópolis', 'Castilho', 'Clementina', 'Gabriel Monteiro', 'Brejo Alegre', 'Santo Antônio do Aracanguá', 'Promissão', 'Rubiácea', 'Auriflama', 'Sud Mennucci'];
+
+function chave_(s) {
+  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+// Padroniza a cidade: tira "SP"/"- SP"/"/SP", ignora acento e maiúsculas e usa a grafia oficial da lista
+function cidade_(s) {
+  s = String(s).replace(/(?:\s*[-\/,]\s*|\s+)\(?sp\)?$/i, '').trim();
+  const k = chave_(s);
+  for (let i = 0; i < CIDADES.length; i++) if (chave_(CIDADES[i]) === k) return CIDADES[i];
+  return titulo_(s);
 }
