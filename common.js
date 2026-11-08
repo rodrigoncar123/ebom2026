@@ -105,29 +105,43 @@
     exceljs: "https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"
   };
 
+  /* ---------- logo da igreja (para os PDFs) ---------- */
+  let _logo = null;
+  function carregaLogo() {
+    if (!_logo) _logo = fetch(E.logo).then((r) => r.blob()).then((b) => new Promise((res, rej) => {
+      const fr = new FileReader(); fr.onload = () => {
+        const im = new Image(); im.onload = () => res({ data: fr.result, w: im.naturalWidth, h: im.naturalHeight }); im.onerror = rej; im.src = fr.result;
+      }; fr.onerror = rej; fr.readAsDataURL(b);
+    })).catch(() => null);
+    return _logo;
+  }
+  const nomeCompleto = () => `${E.igreja} · ${E.ministerio}`;
+
   /* ---------- PDF: comprovante de inscrição ---------- */
   async function gerarComprovante(reg) {
     await loadLib(LIBS.jspdf);
+    const logo = await carregaLogo();
     const { jsPDF } = root.jspdf;
     const doc = new jsPDF({ unit: "mm", format: "a4" });
-    const W = 210;
+    const W = 210, dy = 14; // dy: espaço extra do cabeçalho para a logo
 
     // cabeçalho
-    doc.setFillColor(...BLUE); doc.rect(0, 0, W, 42, "F");
-    doc.setFillColor(...GOLD); doc.rect(0, 42, W, 2, "F");
-    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(32); doc.text(E.sigla, W / 2, 20, { align: "center" });
-    doc.setFont("helvetica", "normal"); doc.setFontSize(12); doc.text(E.nome, W / 2, 28, { align: "center" });
-    doc.setFontSize(9); doc.text(`${E.igreja} · ${E.ministerio}`, W / 2, 35, { align: "center" });
+    doc.setFillColor(...BLUE); doc.rect(0, 0, W, 42 + dy, "F");
+    doc.setFillColor(...GOLD); doc.rect(0, 42 + dy, W, 2, "F");
+    if (logo) { const lh = 20, lw = lh * logo.w / logo.h; doc.addImage(logo.data, "PNG", (W - lw) / 2, 4, lw, lh); }
+    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(28); doc.text(E.sigla, W / 2, 36, { align: "center" });
+    doc.setFont("helvetica", "normal"); doc.setFontSize(12); doc.text(E.nome, W / 2, 43.5, { align: "center" });
+    doc.setFontSize(8.5); doc.text(nomeCompleto(), W / 2, 50, { align: "center" });
 
     // título + protocolo
     doc.setTextColor(...BLUE); doc.setFont("helvetica", "bold"); doc.setFontSize(17);
-    doc.text("COMPROVANTE DE INSCRIÇÃO", W / 2, 58, { align: "center" });
-    doc.setFillColor(...SOFT); doc.roundedRect(20, 65, 170, 18, 3, 3, "F");
+    doc.text("COMPROVANTE DE INSCRIÇÃO", W / 2, 58 + dy, { align: "center" });
+    doc.setFillColor(...SOFT); doc.roundedRect(20, 65 + dy, 170, 18, 3, 3, "F");
     doc.setFontSize(8); doc.setTextColor(...GRAY); doc.setFont("helvetica", "normal");
-    doc.text("PROTOCOLO", 28, 72);
-    doc.text("CÓDIGO DE VERIFICAÇÃO", 120, 72);
+    doc.text("PROTOCOLO", 28, 72 + dy);
+    doc.text("CÓDIGO DE VERIFICAÇÃO", 120, 72 + dy);
     doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.setTextColor(...BLUE);
-    doc.text(reg.protocolo, 28, 79); doc.text(reg.codigo, 120, 79);
+    doc.text(reg.protocolo, 28, 79 + dy); doc.text(reg.codigo, 120, 79 + dy);
 
     // dados do participante
     const campo = (rot, val, x, y, w) => {
@@ -135,26 +149,27 @@
       doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(30, 35, 45);
       doc.text(doc.splitTextToSize(String(val), w)[0], x, y + 6);
     };
-    section(doc, "Dados do participante", 96);
-    campo("Nome completo", String(reg.nome).toUpperCase(), 22, 106, 166);
-    campo("CPF", maskCpf(reg.cpf), 22, 120, 80);
-    campo("Data de nascimento", fmtData(reg.nascimento), 110, 120, 78);
-    campo("Cidade", reg.cidade, 22, 134, 80);
-    campo("Inscrição registrada em", fmtDataHora(reg.criadoEm), 110, 134, 78);
+    section(doc, "Dados do participante", 96 + dy);
+    campo("Nome completo", String(reg.nome).toUpperCase(), 22, 106 + dy, 166);
+    campo("CPF", maskCpf(reg.cpf), 22, 120 + dy, 80);
+    campo("Data de nascimento", fmtData(reg.nascimento), 110, 120 + dy, 78);
+    campo("Cidade", reg.cidade, 22, 134 + dy, 80);
+    campo("Inscrição registrada em", fmtDataHora(reg.criadoEm), 110, 134 + dy, 78);
 
     // evento
-    section(doc, "Evento", 152);
+    section(doc, "Evento", 152 + dy);
     doc.setFont("helvetica", "italic"); doc.setFontSize(11); doc.setTextColor(30, 35, 45);
     const tema = doc.splitTextToSize(`“${E.tema}” (${E.referencia})`, 166);
-    doc.text(tema, 22, 162);
-    let y = 162 + tema.length * 5.5 + 3;
+    doc.text(tema, 22, 162 + dy);
+    let y = 162 + dy + tema.length * 5.5 + 3;
     doc.setFont("helvetica", "normal"); doc.setFontSize(11);
     E.dias.forEach((d) => {
       doc.setFont("helvetica", "bold"); doc.text(`${d.diaSemana}, ${fmtData(d.data)} — ${d.hora.replace(":", "h")}`, 22, y);
       doc.setFont("helvetica", "normal"); doc.text(`Ministração: ${d.pastor}`, 120, y);
       y += 6.5;
     });
-    doc.setFontSize(10); doc.setTextColor(...GRAY); doc.text(`Local: ${E.igreja}`, 22, y); y += 12;
+    doc.setFontSize(9); doc.setTextColor(...GRAY);
+    doc.text(doc.splitTextToSize(`Local: ${nomeCompleto()}`, 166), 22, y); y += 14;
 
     // declaração
     section(doc, "Declaração", y); y += 10;
@@ -171,7 +186,7 @@
     doc.setFontSize(8); doc.setTextColor(...GRAY);
     doc.text(`Documento emitido eletronicamente em ${fmtDataHora(new Date().toISOString())}.`, W / 2, 276, { align: "center" });
     doc.text("Os dados pessoais são usados somente para a organização do evento (Lei nº 13.709/2018 — LGPD).", W / 2, 281, { align: "center" });
-    doc.text(`${E.igreja} · ${E.ministerio}`, W / 2, 286, { align: "center" });
+    doc.text(nomeCompleto(), W / 2, 286, { align: "center" });
     return doc;
   }
   function section(doc, titulo, y) {
@@ -182,15 +197,17 @@
   /* ---------- PDF: relatório de inscritos ---------- */
   async function gerarRelatorioPdf(regs) {
     await loadLib(LIBS.jspdf); await loadLib(LIBS.autotable);
+    const logo = await carregaLogo();
     const { jsPDF } = root.jspdf;
     const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
     const W = 297;
     doc.setFillColor(...BLUE); doc.rect(0, 0, W, 24, "F"); doc.setFillColor(...GOLD); doc.rect(0, 24, W, 1.5, "F");
+    if (logo) { const lh = 18, lw = lh * logo.w / logo.h; doc.addImage(logo.data, "PNG", W - 12 - lw, 3, lw, lh); }
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(16);
     doc.text(`${E.sigla} ${E.ano} — Relatório de inscritos`, 12, 12);
     doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-    doc.text(`${E.nome} · ${E.igreja}`, 12, 19);
-    doc.text(`Emitido em ${fmtDataHora(new Date().toISOString())}`, W - 12, 19, { align: "right" });
+    doc.text(`${E.nome} · ${nomeCompleto()}`, 12, 19);
+    doc.text(`Emitido em ${fmtDataHora(new Date().toISOString())}`, 12, 22.5);
 
     const porCidade = resumoCidades(regs);
     doc.setTextColor(30, 35, 45); doc.setFont("helvetica", "bold"); doc.setFontSize(11);

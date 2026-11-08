@@ -10,6 +10,7 @@
 <body>
 
 <header class="hero">
+  <img class="logo" id="hLogo" alt="Assembleia de Deus Brás Valparaíso">
   <div class="igreja" id="hIgreja"></div>
   <h1>EBOM</h1>
   <p class="sub">Escola Bíblica de Obreiros e Membros</p>
@@ -85,10 +86,11 @@
   const X = window.EBOM, E = X.E;
 
   /* ---- conteúdo do evento ---- */
+  $('hLogo').src = E.logo;
   $('hIgreja').textContent = E.igreja + ' · ' + E.ministerio;
   $('hTema').textContent = E.tema;
   $('hRef').textContent = E.referencia + ' (ARC)'; $('hRef').href = E.referenciaUrl;
-  $('fRodape').textContent = E.igreja;
+  $('fRodape').textContent = E.igreja + ' · ' + E.ministerio;
   $('dias').innerHTML = E.dias.map(d=>`
     <div class="dia">
       <img src="${d.foto}" alt="${d.pastor}">
