@@ -42,7 +42,7 @@
       <div class="dica" id="dNome"></div>
 
       <label for="nasc">Data de nascimento</label>
-      <input id="nasc" type="date" min="1900-01-01" autocomplete="bday">
+      <input id="nasc" type="text" inputmode="numeric" maxlength="10" placeholder="DD/MM/AAAA" autocomplete="bday">
       <div class="dica" id="dNasc"></div>
 
       <label for="cidade">Cidade</label>
@@ -84,6 +84,12 @@
 (function(){
   const $ = (id)=>document.getElementById(id);
   const X = window.EBOM, E = X.E;
+    // Data de nascimento digitada (DD/MM/AAAA) com máscara automática
+    function nascIso(){ const m=($('nasc').value||'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m ? m[3]+'-'+m[2]+'-'+m[1] : ''; }
+    $('nasc').addEventListener('input', e => {
+      const d = e.target.value.replace(/\D/g,'').slice(0,8);
+      e.target.value = d.length>4 ? d.slice(0,2)+'/'+d.slice(2,4)+'/'+d.slice(4) : d.length>2 ? d.slice(0,2)+'/'+d.slice(2) : d;
+    });
 
   /* ---- conteúdo do evento ---- */
   $('hLogo').src = E.logo;
@@ -124,7 +130,7 @@
     ev.preventDefault();
     $('erroGeral').classList.add('hidden');
     let ok = true;
-    const v = { cpf:X.onlyDigits(cpf.value), nome:X.limpa($('nome').value), nascimento:$('nasc').value, cidade:X.limpa($('cidade').value) };
+    const v = { cpf:X.onlyDigits(cpf.value), nome:X.limpa($('nome').value), nascimento:nascIso(), cidade:X.limpa($('cidade').value) };
     ['dCpf','dNome','dNasc','dCidade','dLgpd'].forEach(i=>dica(i,''));
     if (!X.validaCpf(v.cpf))            { dica('dCpf','Informe um CPF válido.','erro',cpf); ok=false; }
     if (!X.validaNome(v.nome))          { dica('dNome','Informe nome e sobrenome (somente letras).','erro',$('nome')); ok=false; }
