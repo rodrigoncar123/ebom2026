@@ -10,6 +10,8 @@
     const d = onlyDigits(s).slice(0, 11);
     return d.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
   };
+  // Relatório em PDF: só os 5 primeiros dígitos (ex.: 319.69*.***-**)
+  const maskCpfRel = (s) => { const d = onlyDigits(s); return d.slice(0, 3) + "." + d.slice(3, 5) + "*.***-**"; };
   const maskCpf = (s) => { const d = onlyDigits(s); return "***." + d.slice(3, 6) + "." + d.slice(6, 9) + "-**"; };
 
   function validaCpf(c) {
@@ -219,7 +221,7 @@
     doc.autoTable({
       startY: 40 + txt.length * 4.5 + 3,
       head: [["Nº", "Protocolo", "Nome completo", "CPF", "Nascimento", "Cidade", "Inscrito em"]],
-      body: regs.map((r, i) => [i + 1, r.protocolo, r.nome, fmtCpf(r.cpf), fmtData(r.nascimento), r.cidade, fmtDataHora(r.criadoEm)]),
+      body: regs.map((r, i) => [i + 1, r.protocolo, r.nome, maskCpfRel(r.cpf), fmtData(r.nascimento), r.cidade, fmtDataHora(r.criadoEm)]),
       styles: { fontSize: 8.5, cellPadding: 2 },
       headStyles: { fillColor: BLUE, textColor: 255 },
       alternateRowStyles: { fillColor: SOFT },
