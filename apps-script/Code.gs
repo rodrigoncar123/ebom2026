@@ -136,10 +136,30 @@ function chave_(s) {
   return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-// Padroniza a cidade: tira "SP"/"- SP"/"/SP", ignora acento e maiúsculas e usa a grafia oficial da lista
+// Padroniza a cidade: tira "SP"/"- SP"/"/SP" (até colado, ex.: "valparaisosp"), ignora acento e maiúsculas e usa a grafia oficial da lista
 function cidade_(s) {
   s = String(s).replace(/(?:\s*[-\/,]\s*|\s+)\(?sp\)?$/i, '').trim();
-  const k = chave_(s);
+  let k = chave_(s);
   for (let i = 0; i < CIDADES.length; i++) if (chave_(CIDADES[i]) === k) return CIDADES[i];
+  // "valparaisosp": sufixo SP colado ao nome
+  if (/sp$/.test(k)) {
+    const k2 = k.slice(0, -2).trim();
+    for (let i = 0; i < CIDADES.length; i++) if (chave_(CIDADES[i]) === k2) return CIDADES[i];
+  }
   return titulo_(s);
+}
+
+// Rodar UMA vez no editor (Executar > corrigirCidades) para padronizar as cidades já gravadas na planilha
+function corrigirCidades() {
+  const sh = aba_(), n = sh.getLastRow();
+  if (n < 2) return 0;
+  const rg = sh.getRange(2, 5, n - 1, 1), v = rg.getValues();
+  let mudou = 0;
+  const novo = v.map(function (r) {
+    const c = cidade_(String(r[0]).replace(/\s+/g, ' ').trim());
+    if (c !== r[0]) mudou++;
+    return [c];
+  });
+  rg.setValues(novo);
+  return mudou;
 }
