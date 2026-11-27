@@ -9,7 +9,7 @@ window.EBOM_CONFIG = {
   API_URL: "https://script.google.com/macros/s/AKfycbzu33sLgVIWuR36b7NGlnmUOiXOFdjGxwm5IVLHUkybfcyU3eMjegqL-zNw6f1sJf5x/exec",
 
   // Encerramento das inscrições (horário de Brasília). O servidor também bloqueia após este horário.
-  ENCERRA_EM: "2026-11-27T15:30:00-03:00",
+  ENCERRA_EM: "", // inscrições reabertas em 27/11 (vazio = sem prazo)
 
   // Registro de presença por QR Code (horário de Brasília) — o servidor aplica as mesmas janelas
   PRESENCA: {

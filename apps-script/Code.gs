@@ -9,7 +9,7 @@ const CONFIG = {
   SALT: 'troque-este-texto-secreto-123', // segredo usado no código de verificação
   ANO: 2026,
   ABA: 'Inscricoes',
-  ENCERRA_EM: '2026-11-27T15:30:00-03:00', // novas inscrições bloqueadas a partir deste horário (Brasília)
+  ENCERRA_EM: '', // vazio = inscrições abertas; ou data ISO (ex.: '2026-11-28T23:00:00-03:00') para bloquear novas inscrições
   // janelas do registro de presença por QR Code (horário de Brasília)
   DIAS: {
     '27': { ini: '2026-11-27T18:00:00-03:00', fim: '2026-11-27T23:00:00-03:00', col: 8 },
@@ -68,7 +68,7 @@ function comprovante_(cpf, nasc) {
   if (!cpfValido_(cpf)) return { ok: false, erro: 'CPF inválido.' };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(nasc)) return { ok: false, erro: 'Data de nascimento inválida.' };
   const r = achar_(cpf);
-  if (!r) return { ok: false, codigo: 'NAO_ENCONTRADO', erro: 'Não encontramos inscrição para este CPF. As inscrições foram encerradas.' };
+  if (!r) return { ok: false, codigo: 'NAO_ENCONTRADO', erro: 'Não encontramos inscrição para este CPF. Confira os dados ou faça a inscrição.' };
   if (r.nascimento !== nasc) return { ok: false, codigo: 'NASC_DIVERGE', erro: 'Data de nascimento não confere com a inscrição.' };
   return { ok: true, jaCadastrado: true, registro: r };
 }
@@ -90,7 +90,7 @@ function inscrever_(req, cpf) {
     return { ok: false, codigo: 'CPF_EXISTE', erro: 'Este CPF já está cadastrado. Para abrir o comprovante, informe a data de nascimento usada na inscrição.' };
   }
 
-  if (new Date().getTime() >= new Date(CONFIG.ENCERRA_EM).getTime()) return { ok: false, codigo: 'ENCERRADO', erro: 'Inscrições encerradas. Se você já se inscreveu, informe o CPF e a data de nascimento usada para abrir o comprovante.' };
+  if (CONFIG.ENCERRA_EM && new Date().getTime() >= new Date(CONFIG.ENCERRA_EM).getTime()) return { ok: false, codigo: 'ENCERRADO', erro: 'Inscrições encerradas. Se você já se inscreveu, informe o CPF e a data de nascimento usada para abrir o comprovante.' };
 
   const sh = aba_();
   const linha = sh.getLastRow() + 1;

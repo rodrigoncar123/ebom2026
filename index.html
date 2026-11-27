@@ -64,6 +64,7 @@
 
       <div class="alerta erro hidden" id="erroGeral"></div>
       <button class="btn" id="btnEnviar" type="submit">Inscrever-me</button>
+      <button class="btn claro" id="btnModo" type="button">Já me inscrevi: abrir comprovante e certificado</button>
     </form>
   </section>
 
@@ -74,6 +75,7 @@
     <div class="resumo" id="resResumo"></div>
     <button class="btn ouro" id="btnAbrir" type="button">📄 Abrir comprovante (PDF)</button>
     <button class="btn claro" id="btnBaixar" type="button">⬇ Baixar comprovante</button>
+    <button class="btn ouro hidden" id="btnCert" type="button">🎓 Gerar certificado (PDF)</button>
     <button class="btn claro" id="btnNova" type="button">Nova inscrição</button>
   </section>
 </main>
@@ -131,6 +133,19 @@
   }
   prazo(); setInterval(prazo, 30000);
 
+  /* ---- "Já me inscrevi": só CPF + data de nascimento (comprovante e, liberado, certificado) ---- */
+  let modoBusca = false;
+  function aplicaModo(){
+    const so = modoBusca || (encerrado() && !legado);
+    $('cNome').classList.toggle('hidden', so); $('cResto').classList.toggle('hidden', so);
+    $('btnEnviar').textContent = so ? 'Abrir meu comprovante' : 'Inscrever-me';
+    $('btnModo').textContent = modoBusca ? 'Voltar para a inscrição' : 'Já me inscrevi: abrir comprovante e certificado';
+    $('btnModo').classList.toggle('hidden', encerrado() && !legado);
+    $('erroGeral').classList.add('hidden');
+  }
+  $('btnModo').onclick = ()=>{ modoBusca = !modoBusca; aplicaModo(); };
+  aplicaModo();
+
   /* ---- máscara e verificação do CPF ---- */
   const cpf = $('cpf');
   cpf.addEventListener('input', ()=>{ cpf.value = X.fmtCpf(cpf.value); dica('dCpf',''); cpf.classList.remove('invalido'); });
@@ -154,7 +169,7 @@
     ev.preventDefault();
     $('erroGeral').classList.add('hidden');
     let ok = true;
-    if (encerrado() && !legado) return comprovanteSo();
+    if (modoBusca || (encerrado() && !legado)) return comprovanteSo();
     const v = { cpf:X.onlyDigits(cpf.value), nome:X.limpa($('nome').value), nascimento:nascIso(), cidade:X.limpa($('cidade').value) };
     ['dCpf','dNome','dNasc','dCidade','dLgpd'].forEach(i=>dica(i,''));
     if (!X.validaCpf(v.cpf))            { dica('dCpf','Informe um CPF válido.','erro',cpf); ok=false; }
@@ -175,7 +190,7 @@
       await mostrarResultado(r.registro, r.jaCadastrado);
     } catch(e){
       const g = $('erroGeral'); g.textContent = 'Sem conexão com o servidor. Verifique a internet e tente novamente.'; g.classList.remove('hidden');
-    } finally { btn.disabled = false; btn.textContent = encerrado() ? 'Abrir meu comprovante' : 'Inscrever-me'; }
+    } finally { btn.disabled = false; aplicaModo(); }
   });
 
   /* ---- após o encerramento: só CPF + data de nascimento ---- */
@@ -190,12 +205,12 @@
     const g = $('erroGeral');
     try {
       const r = await X.Api.call({acao:'comprovante', cpf:c, nascimento:n});
-      if (!r.ok && r.erro === 'Ação desconhecida.') { legado = true; $('cNome').classList.remove('hidden'); $('cResto').classList.remove('hidden'); g.textContent = 'Preencha também nome e cidade para abrir o comprovante.'; g.classList.remove('hidden'); return; }
+      if (!r.ok && r.erro === 'Ação desconhecida.') { legado = true; modoBusca = false; $('cNome').classList.remove('hidden'); $('cResto').classList.remove('hidden'); g.textContent = 'Preencha também nome e cidade para abrir o comprovante.'; g.classList.remove('hidden'); return; }
       if (!r.ok) { g.textContent = r.erro || 'Não foi possível abrir o comprovante.'; g.classList.remove('hidden'); return; }
       await mostrarResultado(r.registro, true);
     } catch(e){
       g.textContent = 'Sem conexão com o servidor. Verifique a internet e tente novamente.'; g.classList.remove('hidden');
-    } finally { btn.disabled = false; btn.textContent = 'Abrir meu comprovante'; }
+    } finally { btn.disabled = false; aplicaModo(); }
   }
 
   async function mostrarResultado(reg, ja){
@@ -217,11 +232,25 @@
       if (window.matchMedia('(pointer:fine)').matches) abrir();
     } catch(e){ const g=$('resTexto'); g.textContent='Inscrição registrada, mas não foi possível gerar o PDF agora. Tente novamente com internet.'; }
     $('btnBaixar').dataset.nome = `Comprovante-EBOM-${reg.protocolo}.pdf`;
+    // certificado: só depois do último dia, para quem tem presença registrada
+    regAtual = reg;
+    const libera = Date.now() >= new Date(window.EBOM_CONFIG.CERT_LIBERA_EM).getTime();
+    $('btnCert').classList.toggle('hidden', !(ja && libera && (reg.p27 || reg.p28)));
   }
+  let regAtual = null, docCert = null;
+  $('btnCert').onclick = async ()=>{
+    if (!regAtual) return; const b = $('btnCert'); b.disabled = true; const t = b.textContent; b.textContent = 'Gerando…';
+    try {
+      docCert = await X.gerarCertificado(regAtual);
+      const w = window.matchMedia('(pointer:fine)').matches ? window.open(docCert.output('bloburl'),'_blank') : null;
+      if (!w) docCert.save(`Certificado-EBOM-${regAtual.protocolo}.pdf`);
+    } catch(e){ const g=$('resTexto'); g.textContent='Não foi possível gerar o certificado agora. Tente novamente com internet.'; }
+    finally { b.disabled = false; b.textContent = t; }
+  };
   function abrir(){ if(!docAtual) return; const w = window.open(docAtual.output('bloburl'),'_blank'); if(!w) baixar(); }
   function baixar(){ if(docAtual) docAtual.save($('btnBaixar').dataset.nome || 'Comprovante-EBOM.pdf'); }
   $('btnAbrir').onclick = abrir; $('btnBaixar').onclick = baixar;
-  $('btnNova').onclick = ()=>{ $('form').reset(); ['dCpf','dNome','dNasc','dCidade','dLgpd'].forEach(i=>dica(i,'')); $('resCard').classList.add('hidden'); $('formCard').classList.remove('hidden'); docAtual=null; window.scrollTo({top:0}); };
+  $('btnNova').onclick = ()=>{ $('form').reset(); ['dCpf','dNome','dNasc','dCidade','dLgpd'].forEach(i=>dica(i,'')); $('resCard').classList.add('hidden'); $('formCard').classList.remove('hidden'); docAtual=null; regAtual=null; $('btnCert').classList.add('hidden'); aplicaModo(); window.scrollTo({top:0}); };
   const esc = (s)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 })();
 </script>
