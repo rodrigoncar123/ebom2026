@@ -33,7 +33,7 @@
       <button class="btn claro" id="bAtualizar">↻ Atualizar</button>
     </div>
     <div class="tabela"><table>
-      <thead><tr><th>Nº</th><th>Protocolo</th><th>Nome completo</th><th>CPF</th><th>Nascimento</th><th>Cidade</th><th>Inscrito em</th></tr></thead>
+      <thead><tr><th>Nº</th><th>Protocolo</th><th>Nome completo</th><th>CPF</th><th>Nascimento</th><th>Cidade</th><th>Inscrito em</th><th>27/11</th><th>28/11</th></tr></thead>
       <tbody id="corpo"></tbody>
     </table></div>
     <p class="dica" id="vazio"></p>
@@ -47,6 +47,7 @@
 (function(){
   const $=(i)=>document.getElementById(i), X=window.EBOM;
   let dados=[];
+  const hora=(iso)=>{ if(!iso) return '—'; const d=new Date(iso); return isNaN(d)?'—':'✓ '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}); };
   const esc=(s)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
   async function carregar(chave){
@@ -62,8 +63,11 @@
     const cid = X.resumoCidades(dados);
     $('kpis').innerHTML = `<div class="kpi"><b>${dados.length}</b><span>Total de inscritos</span></div>
       <div class="kpi"><b>${cid.length}</b><span>Cidades</span></div>
+      <div class="kpi"><b>${dados.filter(r=>r.p27).length}</b><span>Presentes 27/11</span></div>
+      <div class="kpi"><b>${dados.filter(r=>r.p28).length}</b><span>Presentes 28/11</span></div>
+      <div class="kpi"><b>${dados.filter(r=>r.p27&&r.p28).length}</b><span>Nos 2 dias</span></div>
       <div class="kpi"><b>${cid[0]?esc(cid[0][0]):'—'}</b><span>Cidade com mais inscritos${cid[0]?` (${cid[0][1]})`:''}</span></div>`;
-    $('corpo').innerHTML = lista.map((r,i)=>`<tr><td>${dados.indexOf(r)+1}</td><td>${esc(r.protocolo)}</td><td>${esc(r.nome)}</td><td>${X.fmtCpf(r.cpf)}</td><td>${X.fmtData(r.nascimento)}</td><td>${esc(r.cidade)}</td><td>${X.fmtDataHora(r.criadoEm)}</td></tr>`).join('');
+    $('corpo').innerHTML = lista.map((r,i)=>`<tr><td>${dados.indexOf(r)+1}</td><td>${esc(r.protocolo)}</td><td>${esc(r.nome)}</td><td>${X.fmtCpf(r.cpf)}</td><td>${X.fmtData(r.nascimento)}</td><td>${esc(r.cidade)}</td><td>${X.fmtDataHora(r.criadoEm)}</td><td>${hora(r.p27)}</td><td>${hora(r.p28)}</td></tr>`).join('');
     $('vazio').textContent = lista.length ? '' : (dados.length ? 'Nenhum resultado para a busca.' : 'Ainda não há inscritos.');
   }
   async function entrar(){

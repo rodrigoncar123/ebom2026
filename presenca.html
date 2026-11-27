@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#12306b">
+<title>EBOM 2026 — Presença</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="hero">
+  <img class="logo" id="hLogo" alt="Assembleia de Deus Brás Valparaíso">
+  <div class="igreja" id="hIgreja"></div>
+  <h1>EBOM</h1>
+  <p class="sub">Escola Bíblica de Obreiros e Membros</p>
+</header>
+
+<main>
+  <section class="card" id="formCard">
+    <h2>Registrar presença</h2>
+    <p class="lead" id="lead">Informe seus dados para registrar sua presença.</p>
+    <div class="alerta aviso hidden" id="aviso"></div>
+    <form id="form" novalidate autocomplete="off">
+      <label for="cpf">CPF (os 5 primeiros dígitos)</label>
+      <input id="cpf" inputmode="numeric" placeholder="000.00" maxlength="14" autocomplete="off">
+      <div class="dica" id="dCpf"></div>
+
+      <label for="nasc">Data de nascimento</label>
+      <input id="nasc" type="text" inputmode="numeric" maxlength="10" placeholder="DD/MM/AAAA" autocomplete="bday">
+      <div class="dica" id="dNasc"></div>
+
+      <div class="alerta erro hidden" id="erroGeral"></div>
+      <button class="btn" id="btnEnviar" type="submit">Registrar presença</button>
+    </form>
+  </section>
+
+  <section class="card resultado hidden" id="resCard">
+    <div class="selo" id="resSelo">✓</div>
+    <h2 id="resTitulo"></h2>
+    <p class="lead" id="resTexto"></p>
+    <button class="btn claro" id="btnNova" type="button">Registrar outra pessoa</button>
+  </section>
+</main>
+
+<footer>
+  <span id="fRodape"></span><br>
+  <a href="index.html">Página de inscrição</a>
+</footer>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const X = window.EBOM, E = X.E, C = window.EBOM_CONFIG;
+  $('hLogo').src = E.logo; $('hIgreja').textContent = E.igreja + ' · ' + E.ministerio; $('fRodape').textContent = E.igreja + ' · ' + E.ministerio;
+  function nascIso(){ const m=($('nasc').value||'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m ? m[3]+'-'+m[2]+'-'+m[1] : ''; }
+  $('nasc').addEventListener('input', e => {
+    const d = e.target.value.replace(/\D/g,'').slice(0,8);
+    e.target.value = d.length>4 ? d.slice(0,2)+'/'+d.slice(2,4)+'/'+d.slice(4) : d.length>2 ? d.slice(0,2)+'/'+d.slice(2) : d;
+  });
+  const cpf = $('cpf');
+  cpf.addEventListener('input', ()=>{ cpf.value = X.fmtCpf(cpf.value); dica('dCpf',''); });
+  function dica(id, msg, tipo){ const el=$(id); el.textContent=msg; el.className='dica'+(tipo?' '+tipo:''); }
+  const esc = (s)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  function erro(msg){ const g=$('erroGeral'); g.textContent=msg; g.classList.remove('hidden'); }
+  function valida(){
+    $('erroGeral').classList.add('hidden'); dica('dCpf',''); dica('dNasc','');
+    const c = X.onlyDigits(cpf.value), n = nascIso(); let ok = true;
+    if (c.length < 5) { dica('dCpf','Informe pelo menos os 5 primeiros dígitos do CPF.','erro'); ok=false; }
+    if (!X.validaNascimento(n)) { dica('dNasc','Informe uma data de nascimento válida.','erro'); ok=false; }
+    return ok ? { cpf:c, nascimento:n } : null;
+  }
+  const DIA = (new URLSearchParams(location.search).get('d') || '').replace(/\D/g,'');
+  const J = C.PRESENCA && C.PRESENCA[DIA];
+  const dd = E.dias.find(d => d.data.slice(8,10) === DIA);
+  if (!J || !dd) { $('formCard').innerHTML = '<h2>Link inválido</h2><p class="lead">Escaneie o QR Code do dia na entrada do evento.</p>'; return; }
+  $('lead').textContent = `${dd.diaSemana}, ${X.fmtData(dd.data)} — ${dd.hora.replace(':','h')}. Informe seus dados para registrar sua presença.`;
+  const hhmm = (iso)=>new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}).replace(':','h');
+  function janela(){
+    const a=$('aviso'), agora=Date.now(), ini=new Date(J.ini).getTime(), fim=new Date(J.fim).getTime();
+    a.classList.remove('hidden','fim','aviso');
+    if (agora < ini) { a.classList.add('aviso'); a.textContent = `O registro abre às ${hhmm(J.ini)}.`; $('btnEnviar').disabled = true; }
+    else if (agora > fim) { a.classList.add('fim'); a.textContent = 'O registro de presença deste dia foi encerrado.'; $('btnEnviar').disabled = true; }
+    else { a.classList.add('aviso'); a.textContent = `Registro aberto até as ${hhmm(J.fim)}.`; $('btnEnviar').disabled = false; }
+  }
+  janela(); setInterval(janela, 20000);
+  $('form').addEventListener('submit', async (ev)=>{
+    ev.preventDefault(); const v = valida(); if(!v) return;
+    const btn=$('btnEnviar'); btn.disabled=true; btn.textContent='Registrando…';
+    try {
+      const r = await X.Api.call({acao:'presenca', dia:DIA, cpf:v.cpf, nascimento:v.nascimento});
+      if (!r.ok) { if (r.codigo==='CPF_COMPLETO') dica('dCpf','Informe o CPF completo.','erro'); erro(r.erro==='Ação desconhecida.' ? 'Sistema em atualização. Tente novamente em instantes ou procure a organização.' : (r.erro||'Não foi possível registrar.')); return; }
+      $('formCard').classList.add('hidden'); $('resCard').classList.remove('hidden');
+      $('resSelo').textContent = r.jaRegistrado ? '!' : '✓'; $('resSelo').classList.toggle('aviso', !!r.jaRegistrado);
+      $('resTitulo').textContent = r.jaRegistrado ? 'Presença já registrada' : 'Presença registrada!';
+      $('resTexto').innerHTML = `<b>${esc(r.nome)}</b><br>${dd.diaSemana}, ${X.fmtData(dd.data)} · registrada às ${hhmm(r.hora)}.<br>Que o Senhor abençoe esta noite!`;
+      window.scrollTo({top:0,behavior:'smooth'});
+    } catch(e){ erro('Sem conexão com o servidor. Verifique a internet e tente novamente.'); }
+    finally { btn.textContent='Registrar presença'; janela(); }
+  });
+  $('btnNova').onclick = ()=>{ $('form').reset(); dica('dCpf',''); dica('dNasc',''); $('erroGeral').classList.add('hidden'); $('resCard').classList.add('hidden'); $('formCard').classList.remove('hidden'); window.scrollTo({top:0}); };
+
+})();
+</script>
+</body>
+</html>

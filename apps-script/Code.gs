@@ -9,8 +9,15 @@ const CONFIG = {
   SALT: 'troque-este-texto-secreto-123', // segredo usado no código de verificação
   ANO: 2026,
   ABA: 'Inscricoes',
-  ENCERRA_EM: '2026-11-27T15:30:00-03:00' // novas inscrições bloqueadas a partir deste horário (Brasília)
+  ENCERRA_EM: '2026-11-27T15:30:00-03:00', // novas inscrições bloqueadas a partir deste horário (Brasília)
+  // janelas do registro de presença por QR Code (horário de Brasília)
+  DIAS: {
+    '27': { ini: '2026-11-27T18:00:00-03:00', fim: '2026-11-27T22:00:00-03:00', col: 8 },
+    '28': { ini: '2026-11-28T18:00:00-03:00', fim: '2026-11-28T22:00:00-03:00', col: 9 }
+  },
+  CERT_LIBERA_EM: '2026-11-28T22:00:00-03:00' // certificado liberado a partir daqui
 };
+const COLS_PRES = ['Presença 27/11', 'Presença 28/11'];
 const COLS = ['Protocolo', 'CPF', 'Nome completo', 'Data de nascimento', 'Cidade', 'Inscrito em', 'Código de verificação'];
 const TEXTO_RE = /^[\p{L} .'’-]+$/u;
 
@@ -44,6 +51,10 @@ function rota_(req) {
       return inscrever_(req, cpf);
     case 'comprovante':
       return comprovante_(cpf, String(req.nascimento || ''));
+    case 'presenca':
+      return presenca_(req);
+    case 'certificado':
+      return certificado_(req);
     case 'listar':
       if (req.chave !== CONFIG.ADMIN_KEY) return { ok: false, erro: 'Senha incorreta.' };
       return { ok: true, registros: todos_() };
@@ -109,8 +120,9 @@ function todos_() {
   const sh = aba_();
   const n = sh.getLastRow();
   if (n < 2) return [];
-  return sh.getRange(2, 1, n - 1, COLS.length).getValues().map(function (v) {
-    return { protocolo: String(v[0]), cpf: String(v[1]), nome: String(v[2]), nascimento: String(v[3]).slice(0, 10), cidade: String(v[4]), criadoEm: String(v[5]), codigo: String(v[6]) };
+  garantirCabecalho_(sh);
+  return sh.getRange(2, 1, n - 1, COLS.length + 2).getValues().map(function (v) {
+    return { protocolo: String(v[0]), cpf: String(v[1]), nome: String(v[2]), nascimento: String(v[3]).slice(0, 10), cidade: String(v[4]), criadoEm: String(v[5]), codigo: String(v[6]), p27: String(v[7] || ''), p28: String(v[8] || '') };
   });
 }
 
@@ -177,4 +189,61 @@ function corrigirCidades() {
   });
   rg.setValues(novo);
   return mudou;
+}
+
+// ---------- presença e certificado ----------
+function garantirCabecalho_(sh) {
+  const c = sh.getRange(1, COLS.length + 1, 1, 2);
+  const v = c.getValues()[0];
+  if (v[0] !== COLS_PRES[0] || v[1] !== COLS_PRES[1]) {
+    c.setValues([COLS_PRES]).setFontWeight('bold').setBackground('#12306b').setFontColor('#ffffff');
+    sh.setColumnWidths(COLS.length + 1, 2, 150);
+  }
+}
+
+// Localiza o participante pelos 5 primeiros dígitos do CPF (ou CPF completo, se houver outro inscrito com os mesmos 5) + data de nascimento
+function buscar_(cpfDigitos, nasc) {
+  const d = String(cpfDigitos || '').replace(/\D/g, '');
+  if (d.length < 5) return { erro: 'Informe os 5 primeiros dígitos do CPF.' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(nasc)) return { erro: 'Informe a data de nascimento.' };
+  const lista = todos_();
+  const p5 = d.slice(0, 5);
+  const iguais = lista.filter(function (r) { return r.cpf.slice(0, 5) === p5; });
+  if (iguais.length > 1 && d.length < 11) return { erro: 'Há outro inscrito com os mesmos 5 primeiros dígitos. Informe o CPF completo.', codigo: 'CPF_COMPLETO' };
+  for (let i = 0; i < lista.length; i++) {
+    const r = lista[i];
+    if (r.cpf.indexOf(d) === 0 && r.nascimento === nasc) return { reg: r, linha: i + 2 };
+  }
+  return { erro: 'Não encontramos uma inscrição com esses dados. Confira o CPF e a data de nascimento.' };
+}
+
+function presenca_(req) {
+  const dia = String(req.dia || '');
+  const cfg = CONFIG.DIAS[dia];
+  if (!cfg) return { ok: false, erro: 'Dia inválido.' };
+  const agora = new Date().getTime();
+  if (agora < new Date(cfg.ini).getTime()) return { ok: false, codigo: 'AINDA_NAO', erro: 'O registro de presença deste dia ainda não abriu.' };
+  if (agora > new Date(cfg.fim).getTime()) return { ok: false, codigo: 'ENCERRADO', erro: 'O registro de presença deste dia já foi encerrado.' };
+  const b = buscar_(req.cpf, String(req.nascimento || ''));
+  if (!b.reg) return { ok: false, codigo: b.codigo, erro: b.erro };
+  const sh = aba_();
+  garantirCabecalho_(sh);
+  const cel = sh.getRange(b.linha, cfg.col);
+  const atual = String(cel.getValue() || '');
+  if (atual) return { ok: true, jaRegistrado: true, nome: b.reg.nome, dia: dia, hora: atual };
+  const hora = new Date().toISOString();
+  cel.setNumberFormat('@').setValue(hora);
+  return { ok: true, jaRegistrado: false, nome: b.reg.nome, dia: dia, hora: hora };
+}
+
+function certificado_(req) {
+  if (new Date().getTime() < new Date(CONFIG.CERT_LIBERA_EM).getTime()) return { ok: false, codigo: 'AINDA_NAO', erro: 'Os certificados serão liberados após o encerramento do evento.' };
+  const b = buscar_(req.cpf, String(req.nascimento || ''));
+  if (!b.reg) return { ok: false, codigo: b.codigo, erro: b.erro };
+  const r = b.reg;
+  if (!r.p27 || !r.p28) {
+    const falta = (!r.p27 && !r.p28) ? 'nos dois dias (27 e 28/11)' : (!r.p27 ? 'no dia 27/11' : 'no dia 28/11');
+    return { ok: false, codigo: 'SEM_PRESENCA', erro: 'Não há presença registrada ' + falta + '. O certificado é emitido para quem participou dos dois dias. Procure a organização se acredita que há um engano.' };
+  }
+  return { ok: true, registro: r };
 }

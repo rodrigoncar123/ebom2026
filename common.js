@@ -191,6 +191,59 @@
     doc.text(nomeCompleto(), W / 2, 286, { align: "center" });
     return doc;
   }
+
+  /* ---------- PDF: certificado de participação (A4 paisagem) ---------- */
+  async function carregaImg(src) {
+    try {
+      const b = await fetch(src).then((r) => { if (!r.ok) throw 0; return r.blob(); });
+      return await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => { const im = new Image(); im.onload = () => res({ data: fr.result, w: im.naturalWidth, h: im.naturalHeight }); im.onerror = rej; im.src = fr.result; }; fr.onerror = rej; fr.readAsDataURL(b); });
+    } catch (e) { return null; }
+  }
+  async function gerarCertificado(reg) {
+    await loadLib(LIBS.jspdf);
+    const logo = await carregaLogo();
+    const { jsPDF } = root.jspdf;
+    const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
+    const W = 297, H = 210;
+    // moldura
+    doc.setFillColor(...BLUE); doc.rect(0, 0, W, H, "F");
+    doc.setFillColor(255, 255, 255); doc.rect(7, 7, W - 14, H - 14, "F");
+    doc.setDrawColor(...GOLD); doc.setLineWidth(1.2); doc.rect(11, 11, W - 22, H - 22);
+    doc.setLineWidth(0.3); doc.rect(13.5, 13.5, W - 27, H - 27);
+    if (logo) { const lh = 22, lw = lh * logo.w / logo.h; doc.setFillColor(...BLUE); doc.roundedRect((W - lw) / 2 - 8, 16, lw + 16, lh + 6, 3, 3, "F"); doc.addImage(logo.data, "PNG", (W - lw) / 2, 19, lw, lh); }
+    doc.setTextColor(...GRAY); doc.setFont("helvetica", "normal"); doc.setFontSize(9.5);
+    doc.text(nomeCompleto(), W / 2, 50, { align: "center" });
+    doc.setTextColor(...BLUE); doc.setFont("helvetica", "bold"); doc.setFontSize(34);
+    doc.text("CERTIFICADO", W / 2, 66, { align: "center" });
+    doc.setFillColor(...GOLD); doc.rect(W / 2 - 25, 70, 50, 1.2, "F");
+    doc.setFont("helvetica", "normal"); doc.setFontSize(13); doc.setTextColor(30, 35, 45);
+    doc.text("Certificamos que", W / 2, 84, { align: "center" });
+    doc.setFont("helvetica", "bold"); doc.setFontSize(24); doc.setTextColor(...BLUE);
+    doc.text(doc.splitTextToSize(String(reg.nome).toUpperCase(), W - 60)[0], W / 2, 98, { align: "center" });
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(...GRAY);
+    doc.text(`CPF ${maskCpf(reg.cpf)}`, W / 2, 105, { align: "center" });
+    doc.setFontSize(13); doc.setTextColor(30, 35, 45);
+    const dias = E.dias.map((d) => fmtData(d.data).slice(0, 2)).join(" e ");
+    const mes = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"][Number(E.dias[0].data.slice(5, 7)) - 1];
+    const txt = `participou da ${E.nome} (${E.sigla} ${E.ano}), realizada nos dias ${dias} de ${mes} de ${E.ano}, em ${E.igreja} — ${E.ministerio}, ${E.local || ""}. Tema: “${E.tema}” (${E.referencia}).`;
+    doc.text(doc.splitTextToSize(txt, W - 70), W / 2, 118, { align: "center", lineHeightFactor: 1.5 });
+    // assinaturas
+    const ass = (window.EBOM_CONFIG.ASSINATURAS || []);
+    const imgs = await Promise.all(ass.map((a) => a.img ? carregaImg(a.img) : null));
+    const xs = ass.length === 1 ? [W / 2] : [W / 2 - 55, W / 2 + 55];
+    ass.forEach((a, i) => {
+      const x = xs[i];
+      if (imgs[i]) { const ih = 16, iw = Math.min(50, ih * imgs[i].w / imgs[i].h); doc.addImage(imgs[i].data, "PNG", x - iw / 2, 150 - ih, iw, ih); }
+      doc.setDrawColor(30, 35, 45); doc.setLineWidth(0.3); doc.line(x - 38, 152, x + 38, 152);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(30, 35, 45); doc.text(a.nome, x, 158, { align: "center" });
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.setTextColor(...GRAY); doc.text(a.cargo, x, 163.5, { align: "center" });
+    });
+    doc.setFontSize(8); doc.setTextColor(...GRAY);
+    doc.text(`Protocolo ${reg.protocolo} · Código de verificação ${reg.codigo} · Emitido em ${fmtDataHora(new Date().toISOString())}`, W / 2, 184, { align: "center" });
+    doc.text("Certificado emitido eletronicamente para quem registrou presença nos dois dias do evento.", W / 2, 189, { align: "center" });
+    return doc;
+  }
+
   function section(doc, titulo, y) {
     doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(...BLUE); doc.text(titulo.toUpperCase(), 22, y);
     doc.setDrawColor(...GOLD); doc.setLineWidth(0.5); doc.line(22, y + 2, 188, y + 2);
@@ -220,8 +273,8 @@
 
     doc.autoTable({
       startY: 40 + txt.length * 4.5 + 3,
-      head: [["Nº", "Protocolo", "Nome completo", "CPF", "Nascimento", "Cidade", "Inscrito em"]],
-      body: regs.map((r, i) => [i + 1, r.protocolo, r.nome, maskCpfRel(r.cpf), fmtData(r.nascimento), r.cidade, fmtDataHora(r.criadoEm)]),
+      head: [["Nº", "Protocolo", "Nome completo", "CPF", "Nascimento", "Cidade", "Inscrito em", "27/11", "28/11"]],
+      body: regs.map((r, i) => [i + 1, r.protocolo, r.nome, maskCpfRel(r.cpf), fmtData(r.nascimento), r.cidade, fmtDataHora(r.criadoEm), pres(r.p27), pres(r.p28)]),
       styles: { fontSize: 8.5, cellPadding: 2 },
       headStyles: { fillColor: BLUE, textColor: 255 },
       alternateRowStyles: { fillColor: SOFT },
@@ -234,6 +287,7 @@
     });
     return doc;
   }
+  const pres = (iso) => { if (!iso) return ""; const d = new Date(iso); return isNaN(d) ? "" : "✓ " + d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }); };
   function resumoCidades(regs) {
     const m = {};
     const chave = (x) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/(?:\s*[-\/,]\s*|\s+)\(?sp\)?$/i, "").replace(/(valparaiso)sp$/, "$1").trim();
@@ -256,10 +310,10 @@
     ws.addTable({
       name: "Inscritos", ref: "A1", headerRow: true,
       style: { theme: "TableStyleMedium2", showRowStripes: true },
-      columns: ["Nº", "Protocolo", "Nome completo", "CPF", "Data de nascimento", "Cidade", "Inscrito em", "Código de verificação"].map((n) => ({ name: n, filterButton: true })),
-      rows: regs.map((r, i) => [i + 1, r.protocolo, r.nome, fmtCpf(r.cpf), fmtData(r.nascimento), r.cidade, fmtDataHora(r.criadoEm), r.codigo])
+      columns: ["Nº", "Protocolo", "Nome completo", "CPF", "Data de nascimento", "Cidade", "Inscrito em", "Presença 27/11", "Presença 28/11", "Código de verificação"].map((n) => ({ name: n, filterButton: true })),
+      rows: regs.map((r, i) => [i + 1, r.protocolo, r.nome, fmtCpf(r.cpf), fmtData(r.nascimento), r.cidade, fmtDataHora(r.criadoEm), pres(r.p27), pres(r.p28), r.codigo])
     });
-    [6, 18, 40, 17, 18, 22, 22, 22].forEach((w, i) => (ws.getColumn(i + 1).width = w));
+    [6, 18, 40, 17, 18, 22, 22, 16, 16, 22].forEach((w, i) => (ws.getColumn(i + 1).width = w));
 
     const rs = wb.addWorksheet("Resumo");
     rs.getCell("A1").value = `${E.sigla} ${E.ano} — ${E.nome}`; rs.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF12306B" } };
@@ -281,5 +335,5 @@
   }
 
   root.EBOM = { CFG, E, Api, onlyDigits, fmtCpf, maskCpf, validaCpf, validaNascimento, validaNome, validaCidade, limpa,
-    fmtData, fmtDataHora, gerarComprovante, gerarRelatorioPdf, gerarRelatorioXlsx, resumoCidades, baixar, loadLib, LIBS };
+    fmtData, fmtDataHora, gerarComprovante, gerarCertificado, gerarRelatorioPdf, gerarRelatorioXlsx, resumoCidades, baixar, loadLib, LIBS };
 })(typeof window !== "undefined" ? window : globalThis);
