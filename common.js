@@ -223,9 +223,11 @@
     doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(...GRAY);
     doc.text(`CPF ${maskCpf(reg.cpf)}`, W / 2, 105, { align: "center" });
     doc.setFontSize(13); doc.setTextColor(30, 35, 45);
-    const dias = E.dias.map((d) => fmtData(d.data).slice(0, 2)).join(" e ");
-    const mes = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"][Number(E.dias[0].data.slice(5, 7)) - 1];
-    const txt = `participou da ${E.nome} (${E.sigla} ${E.ano}), realizada nos dias ${dias} de ${mes} de ${E.ano}, em ${E.igreja} — ${E.ministerio}, ${E.local || ""}. Tema: “${E.tema}” (${E.referencia}).`;
+    const pres = E.dias.filter((d, i) => (i === 0 ? reg.p27 : reg.p28));
+    const lista = pres.length ? pres : E.dias;
+    const dias = lista.map((d) => fmtData(d.data).slice(0, 2)).join(" e ");
+    const mes = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"][Number(lista[0].data.slice(5, 7)) - 1];
+    const txt = `participou da ${E.nome} (${E.sigla} ${E.ano}), realizada ${lista.length > 1 ? "nos dias" : "no dia"} ${dias} de ${mes} de ${E.ano}, em ${E.igreja} — ${E.ministerio}, ${E.local || ""}. Tema: “${E.tema}” (${E.referencia}).`;
     doc.text(doc.splitTextToSize(txt, W - 70), W / 2, 118, { align: "center", lineHeightFactor: 1.5 });
     // assinaturas
     const ass = (window.EBOM_CONFIG.ASSINATURAS || []);
@@ -240,7 +242,7 @@
     });
     doc.setFontSize(8); doc.setTextColor(...GRAY);
     doc.text(`Protocolo ${reg.protocolo} · Código de verificação ${reg.codigo} · Emitido em ${fmtDataHora(new Date().toISOString())}`, W / 2, 184, { align: "center" });
-    doc.text("Certificado emitido eletronicamente para quem registrou presença nos dois dias do evento.", W / 2, 189, { align: "center" });
+    doc.text("Certificado emitido eletronicamente conforme a presença registrada no evento.", W / 2, 189, { align: "center" });
     return doc;
   }
 

@@ -241,9 +241,8 @@ function certificado_(req) {
   const b = buscar_(req.cpf, String(req.nascimento || ''));
   if (!b.reg) return { ok: false, codigo: b.codigo, erro: b.erro };
   const r = b.reg;
-  if (!r.p27 || !r.p28) {
-    const falta = (!r.p27 && !r.p28) ? 'nos dois dias (27 e 28/11)' : (!r.p27 ? 'no dia 27/11' : 'no dia 28/11');
-    return { ok: false, codigo: 'SEM_PRESENCA', erro: 'Não há presença registrada ' + falta + '. O certificado é emitido para quem participou dos dois dias. Procure a organização se acredita que há um engano.' };
+  if (!r.p27 && !r.p28) {
+    return { ok: false, codigo: 'SEM_PRESENCA', erro: 'Não há presença registrada nos dias 27 e 28/11. Procure a organização se acredita que há um engano.' };
   }
   return { ok: true, registro: r };
 }
