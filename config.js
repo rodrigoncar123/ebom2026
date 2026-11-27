@@ -13,11 +13,11 @@ window.EBOM_CONFIG = {
 
   // Registro de presença por QR Code (horário de Brasília) — o servidor aplica as mesmas janelas
   PRESENCA: {
-    "27": { ini: "2026-11-27T18:00:00-03:00", fim: "2026-11-27T22:00:00-03:00" },
-    "28": { ini: "2026-11-28T18:00:00-03:00", fim: "2026-11-28T22:00:00-03:00" }
+    "27": { ini: "2026-11-27T18:00:00-03:00", fim: "2026-11-27T23:00:00-03:00" },
+    "28": { ini: "2026-11-28T18:00:00-03:00", fim: "2026-11-28T23:00:00-03:00" }
   },
   // Certificado liberado a partir deste horário (quem participou dos dois dias)
-  CERT_LIBERA_EM: "2026-11-28T22:00:00-03:00",
+  CERT_LIBERA_EM: "2026-11-28T23:00:00-03:00",
   ASSINATURAS: [
     { nome: "Pr. Edvaldo Natalino Pedro", cargo: "Pastor", img: "" },
     { nome: "Felipe Custódio", cargo: "Coordenador da EBD", img: "" }

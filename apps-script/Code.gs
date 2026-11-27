@@ -12,10 +12,10 @@ const CONFIG = {
   ENCERRA_EM: '2026-11-27T15:30:00-03:00', // novas inscrições bloqueadas a partir deste horário (Brasília)
   // janelas do registro de presença por QR Code (horário de Brasília)
   DIAS: {
-    '27': { ini: '2026-11-27T18:00:00-03:00', fim: '2026-11-27T22:00:00-03:00', col: 8 },
-    '28': { ini: '2026-11-28T18:00:00-03:00', fim: '2026-11-28T22:00:00-03:00', col: 9 }
+    '27': { ini: '2026-11-27T18:00:00-03:00', fim: '2026-11-27T23:00:00-03:00', col: 8 },
+    '28': { ini: '2026-11-28T18:00:00-03:00', fim: '2026-11-28T23:00:00-03:00', col: 9 }
   },
-  CERT_LIBERA_EM: '2026-11-28T22:00:00-03:00' // certificado liberado a partir daqui
+  CERT_LIBERA_EM: '2026-11-28T23:00:00-03:00' // certificado liberado a partir daqui
 };
 const COLS_PRES = ['Presença 27/11', 'Presença 28/11'];
 const COLS = ['Protocolo', 'CPF', 'Nome completo', 'Data de nascimento', 'Cidade', 'Inscrito em', 'Código de verificação'];
