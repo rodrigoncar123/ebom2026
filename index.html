@@ -30,6 +30,7 @@
   <section class="card" id="formCard">
     <h2>Faça sua inscrição</h2>
     <p class="lead">Preencha os dados abaixo. É rápido e gratuito.</p>
+    <div class="alerta aviso hidden" id="prazoAviso"></div>
     <div class="alerta demo hidden" id="demoAviso">Modo demonstração: as inscrições ficam salvas só neste aparelho. Configure a API (README) para o cadastro oficial.</div>
 
     <form id="form" novalidate autocomplete="off">
@@ -107,6 +108,23 @@
     </div>`).join('');
   if (X.Api.demo) $('demoAviso').classList.remove('hidden');
 
+  /* ---- prazo das inscrições (horário de Brasília) ---- */
+  const FIM = window.EBOM_CONFIG.ENCERRA_EM ? new Date(window.EBOM_CONFIG.ENCERRA_EM) : null;
+  const encerrado = ()=> FIM && Date.now() >= FIM.getTime();
+  function prazo(){
+    const el = $('prazoAviso'); if(!FIM) return;
+    el.classList.remove('hidden', 'fim', 'aviso');
+    if (encerrado()) {
+      el.classList.add('fim');
+      el.textContent = 'Inscrições encerradas. Quem já se inscreveu pode abrir o comprovante informando CPF e data de nascimento.';
+      $('btnEnviar').textContent = 'Abrir meu comprovante';
+    } else {
+      el.classList.add('aviso');
+      el.textContent = 'Inscrições abertas até as 15h30 de hoje (27/11).';
+    }
+  }
+  prazo(); setInterval(prazo, 30000);
+
   /* ---- máscara e verificação do CPF ---- */
   const cpf = $('cpf');
   cpf.addEventListener('input', ()=>{ cpf.value = X.fmtCpf(cpf.value); dica('dCpf',''); cpf.classList.remove('invalido'); });
@@ -150,7 +168,7 @@
       await mostrarResultado(r.registro, r.jaCadastrado);
     } catch(e){
       const g = $('erroGeral'); g.textContent = 'Sem conexão com o servidor. Verifique a internet e tente novamente.'; g.classList.remove('hidden');
-    } finally { btn.disabled = false; btn.textContent = 'Inscrever-me'; }
+    } finally { btn.disabled = false; btn.textContent = encerrado() ? 'Abrir meu comprovante' : 'Inscrever-me'; }
   });
 
   async function mostrarResultado(reg, ja){

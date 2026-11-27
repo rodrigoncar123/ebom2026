@@ -8,7 +8,8 @@ const CONFIG = {
   ADMIN_KEY: 'TROQUE-ESTA-SENHA',        // senha da área de relatório (admin.html)
   SALT: 'troque-este-texto-secreto-123', // segredo usado no código de verificação
   ANO: 2026,
-  ABA: 'Inscricoes'
+  ABA: 'Inscricoes',
+  ENCERRA_EM: '2026-11-27T15:30:00-03:00' // novas inscrições bloqueadas a partir deste horário (Brasília)
 };
 const COLS = ['Protocolo', 'CPF', 'Nome completo', 'Data de nascimento', 'Cidade', 'Inscrito em', 'Código de verificação'];
 const TEXTO_RE = /^[\p{L} .'’-]+$/u;
@@ -65,6 +66,8 @@ function inscrever_(req, cpf) {
     if (existente.nascimento === nasc) return { ok: true, jaCadastrado: true, registro: existente };
     return { ok: false, codigo: 'CPF_EXISTE', erro: 'Este CPF já está cadastrado. Para abrir o comprovante, informe a data de nascimento usada na inscrição.' };
   }
+
+  if (new Date().getTime() >= new Date(CONFIG.ENCERRA_EM).getTime()) return { ok: false, codigo: 'ENCERRADO', erro: 'Inscrições encerradas. Se você já se inscreveu, informe o CPF e a data de nascimento usada para abrir o comprovante.' };
 
   const sh = aba_();
   const linha = sh.getLastRow() + 1;

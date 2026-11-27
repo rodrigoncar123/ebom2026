@@ -51,6 +51,8 @@ input.invalido{border-color:var(--erro)}
 
 .alerta{border-radius:12px;padding:12px 14px;font-size:.93rem;margin-top:14px}
 .alerta.erro{background:#fdeceb;color:var(--erro)}
+.alerta.aviso{background:#eaf0fc;color:#12306b}
+.alerta.fim{background:#fdeceb;color:var(--erro);font-weight:600}
 .alerta.demo{background:#fff6dc;color:#7a5600}
 
 .resultado{text-align:center}
