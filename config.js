@@ -20,7 +20,7 @@ window.EBOM_CONFIG = {
   CERT_LIBERA_EM: "2026-11-28T23:00:00-03:00",
   ASSINATURAS: [
     { nome: "Pr. Edvaldo Natalino Pedro", cargo: "Pastor", img: "" },
-    { nome: "Felipe Custódio", cargo: "Coordenador da EBD", img: "" }
+    { nome: "Felipe Custódio", cargo: "Coordenador da EBD", img: "assets/assinatura-felipe.png" }
   ],
 
   EVENTO: {
