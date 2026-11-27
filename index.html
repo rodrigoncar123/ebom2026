@@ -38,14 +38,17 @@
       <input id="cpf" inputmode="numeric" placeholder="000.000.000-00" maxlength="14" autocomplete="off">
       <div class="dica" id="dCpf"></div>
 
+      <div id="cNome">
       <label for="nome">Nome completo</label>
       <input id="nome" placeholder="Seu nome completo" autocomplete="name">
       <div class="dica" id="dNome"></div>
+      </div>
 
       <label for="nasc">Data de nascimento</label>
       <input id="nasc" type="text" inputmode="numeric" maxlength="10" placeholder="DD/MM/AAAA" autocomplete="bday">
       <div class="dica" id="dNasc"></div>
 
+      <div id="cResto">
       <label for="cidade">Cidade</label>
       <input id="cidade" list="cidades" placeholder="Sua cidade" autocomplete="address-level2">
       <datalist id="cidades">
@@ -57,6 +60,7 @@
       <label class="consent"><input type="checkbox" id="lgpd">
         <span>Autorizo o uso dos meus dados somente para a organização do evento (LGPD).</span></label>
       <div class="dica" id="dLgpd"></div>
+      </div>
 
       <div class="alerta erro hidden" id="erroGeral"></div>
       <button class="btn" id="btnEnviar" type="submit">Inscrever-me</button>
@@ -110,6 +114,7 @@
 
   /* ---- prazo das inscrições (horário de Brasília) ---- */
   const FIM = window.EBOM_CONFIG.ENCERRA_EM ? new Date(window.EBOM_CONFIG.ENCERRA_EM) : null;
+  let legado = false; // servidor ainda sem a ação 'comprovante': volta ao formulário completo
   const encerrado = ()=> FIM && Date.now() >= FIM.getTime();
   function prazo(){
     const el = $('prazoAviso'); if(!FIM) return;
@@ -118,6 +123,7 @@
       el.classList.add('fim');
       el.textContent = 'Inscrições encerradas. Quem já se inscreveu pode abrir o comprovante informando CPF e data de nascimento.';
       $('btnEnviar').textContent = 'Abrir meu comprovante';
+      if (!legado) { $('cNome').classList.add('hidden'); $('cResto').classList.add('hidden'); }
     } else {
       el.classList.add('aviso');
       el.textContent = 'Inscrições abertas até as 15h30 de hoje (27/11).';
@@ -148,6 +154,7 @@
     ev.preventDefault();
     $('erroGeral').classList.add('hidden');
     let ok = true;
+    if (encerrado() && !legado) return comprovanteSo();
     const v = { cpf:X.onlyDigits(cpf.value), nome:X.limpa($('nome').value), nascimento:nascIso(), cidade:X.limpa($('cidade').value) };
     ['dCpf','dNome','dNasc','dCidade','dLgpd'].forEach(i=>dica(i,''));
     if (!X.validaCpf(v.cpf))            { dica('dCpf','Informe um CPF válido.','erro',cpf); ok=false; }
@@ -170,6 +177,26 @@
       const g = $('erroGeral'); g.textContent = 'Sem conexão com o servidor. Verifique a internet e tente novamente.'; g.classList.remove('hidden');
     } finally { btn.disabled = false; btn.textContent = encerrado() ? 'Abrir meu comprovante' : 'Inscrever-me'; }
   });
+
+  /* ---- após o encerramento: só CPF + data de nascimento ---- */
+  async function comprovanteSo(){
+    const c = X.onlyDigits(cpf.value), n = nascIso();
+    ['dCpf','dNasc'].forEach(i=>dica(i,''));
+    let ok = true;
+    if (!X.validaCpf(c))        { dica('dCpf','Informe um CPF válido.','erro',cpf); ok=false; }
+    if (!X.validaNascimento(n)) { dica('dNasc','Informe uma data de nascimento válida.','erro',$('nasc')); ok=false; }
+    if (!ok) return;
+    const btn = $('btnEnviar'); btn.disabled = true; btn.textContent = 'Buscando…';
+    const g = $('erroGeral');
+    try {
+      const r = await X.Api.call({acao:'comprovante', cpf:c, nascimento:n});
+      if (!r.ok && r.erro === 'Ação desconhecida.') { legado = true; $('cNome').classList.remove('hidden'); $('cResto').classList.remove('hidden'); g.textContent = 'Preencha também nome e cidade para abrir o comprovante.'; g.classList.remove('hidden'); return; }
+      if (!r.ok) { g.textContent = r.erro || 'Não foi possível abrir o comprovante.'; g.classList.remove('hidden'); return; }
+      await mostrarResultado(r.registro, true);
+    } catch(e){
+      g.textContent = 'Sem conexão com o servidor. Verifique a internet e tente novamente.'; g.classList.remove('hidden');
+    } finally { btn.disabled = false; btn.textContent = 'Abrir meu comprovante'; }
+  }
 
   async function mostrarResultado(reg, ja){
     $('formCard').classList.add('hidden'); $('resCard').classList.remove('hidden');

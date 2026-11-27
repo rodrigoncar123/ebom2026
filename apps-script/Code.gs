@@ -42,12 +42,24 @@ function rota_(req) {
       return { ok: true, existe: !!achar_(cpf) };
     case 'inscrever':
       return inscrever_(req, cpf);
+    case 'comprovante':
+      return comprovante_(cpf, String(req.nascimento || ''));
     case 'listar':
       if (req.chave !== CONFIG.ADMIN_KEY) return { ok: false, erro: 'Senha incorreta.' };
       return { ok: true, registros: todos_() };
     default:
       return { ok: false, erro: 'Ação desconhecida.' };
   }
+}
+
+// Abre o comprovante só com CPF + data de nascimento (usado após o encerramento)
+function comprovante_(cpf, nasc) {
+  if (!cpfValido_(cpf)) return { ok: false, erro: 'CPF inválido.' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(nasc)) return { ok: false, erro: 'Data de nascimento inválida.' };
+  const r = achar_(cpf);
+  if (!r) return { ok: false, codigo: 'NAO_ENCONTRADO', erro: 'Não encontramos inscrição para este CPF. As inscrições foram encerradas.' };
+  if (r.nascimento !== nasc) return { ok: false, codigo: 'NASC_DIVERGE', erro: 'Data de nascimento não confere com a inscrição.' };
+  return { ok: true, jaCadastrado: true, registro: r };
 }
 
 function inscrever_(req, cpf) {
